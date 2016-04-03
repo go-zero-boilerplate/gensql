@@ -158,11 +158,11 @@ func generatorFieldFromString(s string) *GeneratorField {
 func getSchemaGoVariablePart(dialectString string) string {
 	switch strings.ToLower(dialectString) {
 	case "mysql":
-		return "database.MysqlDialect"
+		return "databases.MysqlDialect"
 	case "sqlite":
-		return "database.SqliteDialect"
+		return "databases.SqliteDialect"
 	case "postgres":
-		return "database.PostgresDialect"
+		return "databases.PostgresDialect"
 	default:
 		panic("Dialect '" + dialectString + "' not supported for the generation 'variable' part")
 	}
