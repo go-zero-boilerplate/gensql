@@ -29,12 +29,7 @@ func (p *postgres) Column(f *Field) string {
 		return "SERIAL"
 	}
 
-	size := f.Size
-	if size == 0 {
-		size = DEFAULT_VARCHAR_SIZE
-	}
-
-	visitor := &postgresFieldTypeVisitor{fieldSize: size}
+	visitor := &postgresFieldTypeVisitor{fieldSize: f.Size}
 	f.Type.Accept(visitor)
 	return visitor.typKeyword
 }
@@ -47,6 +42,14 @@ func (p *postgres) WrapDefaultValue(defaultValue string) string {
 		return "" + defaultValue + ""
 	}
 	return "'" + defaultValue + "'"
+}
+
+func (p *postgres) IndexNameFromFieldNames(fieldNames ...string) (string, error) {
+	indexName := strings.Join(fieldNames, "_")
+	if len(indexName) > 64 {
+		return "", fmt.Errorf("The combined field names exceed 64 characters")
+	}
+	return indexName, nil
 }
 
 type postgresTokenVisitor struct {
@@ -69,7 +72,11 @@ type postgresFieldTypeVisitor struct {
 
 func (p *postgresFieldTypeVisitor) VisitInteger(*IntegerFieldType) { p.typKeyword = "INTEGER" }
 func (p *postgresFieldTypeVisitor) VisitVarchar(*VarcharFieldType) {
-	p.typKeyword = fmt.Sprintf("VARCHAR(%d)", p.fieldSize)
+	if p.fieldSize > 0 {
+		p.typKeyword = fmt.Sprintf("VARCHAR(%d)", p.fieldSize)
+	} else {
+		p.typKeyword = "TEXT"
+	}
 }
 func (p *postgresFieldTypeVisitor) VisitBoolean(*BooleanFieldType) { p.typKeyword = "BOOLEAN" }
 func (p *postgresFieldTypeVisitor) VisitReal(*RealFieldType)       { p.typKeyword = "REAL" }

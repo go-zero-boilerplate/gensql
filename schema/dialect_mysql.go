@@ -25,12 +25,7 @@ func (m *mysql) Token(keyword SchemaKeyword) (_ string) {
 }
 
 func (m *mysql) Column(f *Field) string {
-	size := f.Size
-	if size == 0 {
-		size = DEFAULT_VARCHAR_SIZE
-	}
-
-	visitor := &mysqlFieldTypeVisitor{fieldSize: size}
+	visitor := &mysqlFieldTypeVisitor{fieldSize: f.Size}
 	f.Type.Accept(visitor)
 	return visitor.typKeyword
 }
@@ -40,6 +35,14 @@ func (m *mysql) WrapDefaultValue(defaultValue string) string {
 		return "NULL"
 	}
 	return "'" + defaultValue + "'"
+}
+
+func (m *mysql) IndexNameFromFieldNames(fieldNames ...string) (string, error) {
+	indexName := strings.Join(fieldNames, "_")
+	if len(indexName) > 64 {
+		return "", fmt.Errorf("The combined field names exceed 64 characters")
+	}
+	return indexName, nil
 }
 
 type mysqlTokenVisitor struct {
@@ -62,7 +65,11 @@ type mysqlFieldTypeVisitor struct {
 
 func (m *mysqlFieldTypeVisitor) VisitInteger(*IntegerFieldType) { m.typKeyword = "INTEGER" }
 func (m *mysqlFieldTypeVisitor) VisitVarchar(*VarcharFieldType) {
-	m.typKeyword = fmt.Sprintf("VARCHAR(%d)", m.fieldSize)
+	if m.fieldSize > 0 {
+		m.typKeyword = fmt.Sprintf("VARCHAR(%d)", m.fieldSize)
+	} else {
+		m.typKeyword = "TEXT"
+	}
 }
 func (m *mysqlFieldTypeVisitor) VisitBoolean(*BooleanFieldType)     { m.typKeyword = "BOOLEAN" }
 func (m *mysqlFieldTypeVisitor) VisitReal(*RealFieldType)           { m.typKeyword = "DOUBLE" }

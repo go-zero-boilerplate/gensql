@@ -43,13 +43,24 @@ func (a *Appender) AppendSchemaCreate(entity *GeneratorEntity) *Appender {
 		}
 	}
 	builder = builder.Primary(primaryNames...)
-	//builder.Index(name, unique, ...)
+
+	for indexGroupNum, uniqueGroup := range entity.Uniques {
+		fieldNames := []string{}
+		for _, uf := range uniqueGroup {
+			fieldNames = append(fieldNames, uf.SqlColumn)
+		}
+		nameOfUniqueIndex, err := entity.Dialect.Dialect.IndexNameFromFieldNames(fieldNames...)
+		if err != nil {
+			nameOfUniqueIndex = fmt.Sprintf("entity_unique_%d", indexGroupNum)
+		}
+		builder = builder.Index(nameOfUniqueIndex, true, fieldNames...)
+	}
 
 	table := builder.Build()
 
 	schemaText := schema.GenerateSchema(entity.Dialect.Dialect, table)
 	a.appendLines(fmt.Sprintf(`const ( 
-			%s__CREATE_SQL_%s = `+"`%s`"+`
+			%s__CREATE_TABLE_SQL__%s = `+"`%s`"+`
 		)`,
 		strings.ToUpper(entity.Dialect.Name),
 		strings.ToUpper(entity.EntityName),

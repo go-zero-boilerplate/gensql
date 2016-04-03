@@ -26,14 +26,14 @@ func (d *dialectSchemaCreateIndexVisitor) VisitMysql(m *mysql) {
 	tabWriter.AppendLine("CREATE %s %s ON %s (", obj, d.index.Name, d.table.Name)
 
 	tabWriter.LevelUp()
-	for i, f := range d.table.Fields {
+	for i, f := range d.index.Fields {
 		conditionalAppender := &ConditionalStringSliceAppender{}
 		conditionalAppender.Append(f.Name)
 
 		trimmedJoined := strings.TrimSpace(strings.Join(conditionalAppender.Slice(), " "))
 
 		suffix := ""
-		if i < len(d.table.Fields)-1 {
+		if i < len(d.index.Fields)-1 {
 			suffix = ","
 		}
 		tabWriter.AppendLine(trimmedJoined + suffix)
@@ -56,14 +56,14 @@ func (d *dialectSchemaCreateIndexVisitor) VisitSqlite(s *sqlite) {
 	tabWriter.AppendLine("CREATE %s %s ON %s (", obj, d.index.Name, d.table.Name)
 
 	tabWriter.LevelUp()
-	for i, f := range d.table.Fields {
+	for i, f := range d.index.Fields {
 		conditionalAppender := &ConditionalStringSliceAppender{}
 		conditionalAppender.Append(f.Name)
 
 		trimmedJoined := strings.TrimSpace(strings.Join(conditionalAppender.Slice(), " "))
 
 		suffix := ""
-		if i < len(d.table.Fields)-1 {
+		if i < len(d.index.Fields)-1 {
 			suffix = ","
 		}
 		tabWriter.AppendLine(trimmedJoined + suffix)
@@ -86,14 +86,14 @@ func (d *dialectSchemaCreateIndexVisitor) VisitPostgres(p *postgres) {
 	tabWriter.AppendLine("CREATE %s %s ON %s (", obj, d.index.Name, d.table.Name)
 
 	tabWriter.LevelUp()
-	for i, f := range d.table.Fields {
+	for i, f := range d.index.Fields {
 		conditionalAppender := &ConditionalStringSliceAppender{}
 		conditionalAppender.Append(f.Name)
 
 		trimmedJoined := strings.TrimSpace(strings.Join(conditionalAppender.Slice(), " "))
 
 		suffix := ""
-		if i < len(d.table.Fields)-1 {
+		if i < len(d.index.Fields)-1 {
 			suffix = ","
 		}
 		tabWriter.AppendLine(trimmedJoined + suffix)

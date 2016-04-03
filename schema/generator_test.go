@@ -22,7 +22,8 @@ func TestGenerateShema(t *testing.T) {
 		table := NewTableBuilder("blog_tab1").
 			Field("id", INTEGER, true, true, 0).
 			Field("name", VARCHAR, false, false, 200).
-			Primary("id").Index("unique_name", true, "name").
+			Primary("id").
+			Index("unique_name", true, "name").
 			Build()
 		var schema string
 
@@ -33,7 +34,7 @@ func TestGenerateShema(t *testing.T) {
 		        name VARCHAR(200) NOT NULL                         
 			);                                                         
                                                            
-			CREATE UNIQUE INDEX unique_name ON blog_tab1 ( id, name );`))
+			CREATE UNIQUE INDEX unique_name ON blog_tab1 ( name );`))
 
 		schema = GenerateSchema(NewPostgresSchemaDialect(), table)
 		So(cleanSQLStatement(schema), ShouldEqual, cleanSQLStatement(`
@@ -42,7 +43,7 @@ func TestGenerateShema(t *testing.T) {
 		        name VARCHAR(200) NOT NULL
 			);
 
-			CREATE UNIQUE INDEX unique_name ON blog_tab1 ( id, name );`))
+			CREATE UNIQUE INDEX unique_name ON blog_tab1 ( name );`))
 
 		schema = GenerateSchema(NewSqliteSchemaDialect(), table)
 		So(cleanSQLStatement(schema), ShouldEqual, cleanSQLStatement(`
@@ -51,6 +52,6 @@ func TestGenerateShema(t *testing.T) {
 			    name TEXT NOT NULL
 			);
 
-			CREATE UNIQUE INDEX unique_name ON blog_tab1 ( id, name );`))
+			CREATE UNIQUE INDEX unique_name ON blog_tab1 ( name );`))
 	})
 }

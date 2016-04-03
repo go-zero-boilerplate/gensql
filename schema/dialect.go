@@ -9,6 +9,7 @@ import (
 type SchemaDialect interface {
 	databases.Dialect
 	Accept(DialectVisitor)
+	IndexNameFromFieldNames(fieldNames ...string) (string, error)
 }
 
 var (

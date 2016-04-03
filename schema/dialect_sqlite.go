@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -37,6 +38,14 @@ func (s *sqlite) WrapDefaultValue(defaultValue string) string {
 		return "(" + defaultValue + ")"
 	}
 	return "('" + defaultValue + "')"
+}
+
+func (s *sqlite) IndexNameFromFieldNames(fieldNames ...string) (string, error) {
+	indexName := strings.Join(fieldNames, "_")
+	if len(indexName) > 64 {
+		return "", fmt.Errorf("The combined field names exceed 64 characters")
+	}
+	return indexName, nil
 }
 
 type sqliteTokenVisitor struct {

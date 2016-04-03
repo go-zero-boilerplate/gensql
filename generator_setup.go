@@ -28,6 +28,8 @@ type GeneratorEntity struct {
 	InsertableFields []*GeneratorField
 	EditableFields   []*GeneratorField
 	TriggerFields    []*GeneratorField
+
+	Uniques [][]*GeneratorField
 }
 
 type GeneratorField struct {
@@ -117,6 +119,7 @@ func generatorFieldFromString(s string) *GeneratorField {
 		fieldArgs = splitted[2:]
 	}
 
+	alreadyGotSizeArg := false
 	for _, arg := range fieldArgs {
 		switch strings.ToLower(arg) {
 		case "pk":
@@ -128,12 +131,26 @@ func generatorFieldFromString(s string) *GeneratorField {
 		}
 
 		if num, err := strconv.ParseInt(arg, 10, 32); err == nil {
+			if alreadyGotSizeArg {
+				panic(fmt.Sprintf("There are multiple numeric arguments, a number implies the size and there cannot be multiple, the input string was '%s'", s))
+			}
 			sqlSize = int(num)
+			alreadyGotSizeArg = true
 		}
 
 		if strings.HasPrefix(strings.ToLower(arg), "default:") {
 			defaultValue = strings.Split(arg, ":")[1]
 		}
+	}
+
+	isTextField := strings.EqualFold(fieldGoType, "TEXT")
+	if sqlSize == 0 && !isTextField {
+		//TODO: Maybe this should be dialect specific?
+		sqlSize = schema.DEFAULT_VARCHAR_SIZE
+	}
+
+	if isTextField {
+		fieldGoType = "string"
 	}
 
 	schemaType = schemaFieldTypeFromGoType(fieldGoType, isCreatedField, isUpdatedField)
@@ -166,6 +183,15 @@ func getSchemaGoVariablePart(dialectString string) string {
 	default:
 		panic("Dialect '" + dialectString + "' not supported for the generation 'variable' part")
 	}
+}
+
+func findGeneratorFieldByName(fields []*GeneratorField, fieldName string) *GeneratorField {
+	for _, f := range fields {
+		if f.SqlColumn == kace.Snake(fieldName) {
+			return f
+		}
+	}
+	return nil
 }
 
 func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *GeneratorSetup) {
@@ -201,6 +227,19 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 			}
 		}
 
+		generatorUniqueGroups := [][]*GeneratorField{}
+		for _, uniqueIndexFieldGroup := range entitySetup.Uniques {
+			tmpUniqueGroup := []*GeneratorField{}
+			for _, fieldName := range uniqueIndexFieldGroup {
+				foundField := findGeneratorFieldByName(allFields, fieldName)
+				if foundField == nil {
+					panic(fmt.Sprintf("Unknown field '%s' specified as a unique field", fieldName))
+				}
+				tmpUniqueGroup = append(tmpUniqueGroup, foundField)
+			}
+			generatorUniqueGroups = append(generatorUniqueGroups, tmpUniqueGroup)
+		}
+
 		dialectName := kace.Camel(entitySetup.Dialect, true)
 		generatorDialect := &GeneratorDialect{
 			Name:           dialectName,
@@ -222,6 +261,8 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 			EditableFields:   editableFields,
 			InsertableFields: insertableFields,
 			TriggerFields:    triggerFields,
+
+			Uniques: generatorUniqueGroups,
 		})
 	}
 

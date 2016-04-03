@@ -1,5 +1,5 @@
 package schema
 
 const (
-	DEFAULT_VARCHAR_SIZE = 512
+	DEFAULT_VARCHAR_SIZE = 200
 )
