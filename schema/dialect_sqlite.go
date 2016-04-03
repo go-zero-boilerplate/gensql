@@ -24,7 +24,7 @@ func (s *sqlite) Token(keyword SchemaKeyword) (_ string) {
 	return visitor.keyword
 }
 
-func (s *sqlite) Column(f *Field) string {
+func (s *sqlite) ColumnType(f *Field) string {
 	visitor := &sqliteFieldTypeVisitor{}
 	f.Type.Accept(visitor)
 	return visitor.typKeyword
@@ -71,3 +71,5 @@ func (s *sqliteFieldTypeVisitor) VisitReal(*RealFieldType)           { s.typKeyw
 func (s *sqliteFieldTypeVisitor) VisitBlob(*BlobFieldType)           { s.typKeyword = "BLOB" }
 func (s *sqliteFieldTypeVisitor) VisitDateTime(*DateTimeFieldType)   { s.typKeyword = "DATETIME" }
 func (s *sqliteFieldTypeVisitor) VisitTimeStamp(*TimeStampFieldType) { s.typKeyword = "DATETIME" }
+func (s *sqliteFieldTypeVisitor) VisitCreated(*CreatedFieldType)     { s.typKeyword = "DATETIME" }
+func (s *sqliteFieldTypeVisitor) VisitUpdated(*UpdatedFieldType)     { s.typKeyword = "DATETIME" }

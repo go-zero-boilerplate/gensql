@@ -24,7 +24,7 @@ func (p *postgres) Token(keyword SchemaKeyword) (_ string) {
 	return visitor.keyword
 }
 
-func (p *postgres) Column(f *Field) string {
+func (p *postgres) ColumnType(f *Field) string {
 	if f.Auto {
 		return "SERIAL"
 	}
@@ -85,5 +85,11 @@ func (p *postgresFieldTypeVisitor) VisitDateTime(*DateTimeFieldType) {
 	p.typKeyword = "timestamp without time zone"
 }
 func (p *postgresFieldTypeVisitor) VisitTimeStamp(*TimeStampFieldType) {
+	p.typKeyword = "timestamp without time zone"
+}
+func (p *postgresFieldTypeVisitor) VisitCreated(*CreatedFieldType) {
+	p.typKeyword = "timestamp without time zone"
+}
+func (p *postgresFieldTypeVisitor) VisitUpdated(*UpdatedFieldType) {
 	p.typKeyword = "timestamp without time zone"
 }

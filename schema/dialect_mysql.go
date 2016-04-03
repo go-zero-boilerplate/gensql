@@ -24,7 +24,7 @@ func (m *mysql) Token(keyword SchemaKeyword) (_ string) {
 	return visitor.keyword
 }
 
-func (m *mysql) Column(f *Field) string {
+func (m *mysql) ColumnType(f *Field) string {
 	visitor := &mysqlFieldTypeVisitor{fieldSize: f.Size}
 	f.Type.Accept(visitor)
 	return visitor.typKeyword
@@ -76,3 +76,5 @@ func (m *mysqlFieldTypeVisitor) VisitReal(*RealFieldType)           { m.typKeywo
 func (m *mysqlFieldTypeVisitor) VisitBlob(*BlobFieldType)           { m.typKeyword = "MEDIUMBLOB" }
 func (m *mysqlFieldTypeVisitor) VisitDateTime(*DateTimeFieldType)   { m.typKeyword = "DATETIME" }
 func (m *mysqlFieldTypeVisitor) VisitTimeStamp(*TimeStampFieldType) { m.typKeyword = "TIMESTAMP" }
+func (m *mysqlFieldTypeVisitor) VisitCreated(*CreatedFieldType)     { m.typKeyword = "DATETIME" }
+func (m *mysqlFieldTypeVisitor) VisitUpdated(*UpdatedFieldType)     { m.typKeyword = "TIMESTAMP" }

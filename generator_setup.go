@@ -67,9 +67,9 @@ func splitStringRemoveEmpty(s, separator string) (strs []string) {
 
 func schemaFieldTypeFromGoType(goType string, isCreatedField, isUpdatedField bool) schema.FieldType {
 	if isCreatedField {
-		return schema.DATETIME
+		return schema.CREATED
 	} else if isUpdatedField {
-		return schema.TIMESTAMP
+		return schema.UPDATED
 	}
 
 	fieldType, err := schema.GoToFieldType(goType)

@@ -24,11 +24,17 @@ func (d *dialectSchemaCreateTableVisitor) VisitMysql(m *mysql) {
 		conditionalAppender := &ConditionalStringSliceAppender{}
 		conditionalAppender.Append(f.Name)
 
-		conditionalAppender.Append(m.Column(f))
+		conditionalAppender.Append(m.ColumnType(f))
 		conditionalAppender.AppendWithCondition(f.Primary, m.Token(PRIMARY_KEY))
 		conditionalAppender.AppendWithCondition(f.Auto, m.Token(AUTO_INCREMENT))
 		conditionalAppender.AppendWithCondition(!f.Nullable, m.Token(NOT_NULL))
-		conditionalAppender.AppendWithCondition(f.Default != "", m.Token(DEFAULT)+" "+m.WrapDefaultValue(f.Default))
+		if f.Type == CREATED {
+			conditionalAppender.Append(m.Token(DEFAULT) + " CURRENT_TIMESTAMP")
+		} else if f.Type == UPDATED {
+			conditionalAppender.Append(m.Token(DEFAULT) + " CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+		} else {
+			conditionalAppender.AppendWithCondition(f.Default != "", m.Token(DEFAULT)+" "+m.WrapDefaultValue(f.Default))
+		}
 
 		trimmedJoined := strings.TrimSpace(strings.Join(conditionalAppender.Slice(), " "))
 
@@ -56,11 +62,18 @@ func (d *dialectSchemaCreateTableVisitor) VisitSqlite(s *sqlite) {
 		conditionalAppender := &ConditionalStringSliceAppender{}
 		conditionalAppender.Append(f.Name)
 
-		conditionalAppender.Append(s.Column(f))
+		conditionalAppender.Append(s.ColumnType(f))
 		conditionalAppender.AppendWithCondition(f.Primary, s.Token(PRIMARY_KEY))
 		conditionalAppender.AppendWithCondition(f.Auto, s.Token(AUTO_INCREMENT))
 		conditionalAppender.AppendWithCondition(!f.Nullable, s.Token(NOT_NULL))
-		conditionalAppender.AppendWithCondition(f.Default != "", s.Token(DEFAULT)+" "+s.WrapDefaultValue(f.Default))
+		if f.Type == CREATED {
+			conditionalAppender.Append(s.Token(DEFAULT) + " CURRENT_TIMESTAMP")
+		} else if f.Type == UPDATED {
+			//TODO: Implement logic for sqlite field to add trigger for ON UPDATE - currently will fail
+			conditionalAppender.Append(s.Token(DEFAULT) + " CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+		} else {
+			conditionalAppender.AppendWithCondition(f.Default != "", s.Token(DEFAULT)+" "+s.WrapDefaultValue(f.Default))
+		}
 
 		trimmedJoined := strings.TrimSpace(strings.Join(conditionalAppender.Slice(), " "))
 
@@ -88,11 +101,18 @@ func (d *dialectSchemaCreateTableVisitor) VisitPostgres(p *postgres) {
 		conditionalAppender := &ConditionalStringSliceAppender{}
 		conditionalAppender.Append(f.Name)
 
-		conditionalAppender.Append(p.Column(f))
+		conditionalAppender.Append(p.ColumnType(f))
 		conditionalAppender.AppendWithCondition(f.Primary, p.Token(PRIMARY_KEY))
 		conditionalAppender.AppendWithCondition(f.Auto, p.Token(AUTO_INCREMENT))
 		conditionalAppender.AppendWithCondition(!f.Nullable, p.Token(NOT_NULL))
-		conditionalAppender.AppendWithCondition(f.Default != "", p.Token(DEFAULT)+" "+p.WrapDefaultValue(f.Default))
+		if f.Type == CREATED {
+			conditionalAppender.Append(p.Token(DEFAULT) + " CURRENT_TIMESTAMP")
+		} else if f.Type == UPDATED {
+			//TODO: Implement logic for postgres field to add trigger for ON UPDATE - currently will fail
+			conditionalAppender.Append(p.Token(DEFAULT) + " CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+		} else {
+			conditionalAppender.AppendWithCondition(f.Default != "", p.Token(DEFAULT)+" "+p.WrapDefaultValue(f.Default))
+		}
 
 		trimmedJoined := strings.TrimSpace(strings.Join(conditionalAppender.Slice(), " "))
 
