@@ -29,6 +29,9 @@ type GeneratorEntity struct {
 	EditableFields   []*GeneratorField
 	TriggerFields    []*GeneratorField
 
+	HasSingleIntPkField bool
+	IntPkField          *GeneratorField
+
 	Uniques [][]*GeneratorField
 }
 
@@ -194,6 +197,24 @@ func findGeneratorFieldByName(fields []*GeneratorField, fieldName string) *Gener
 	return nil
 }
 
+func checkForSingleIntPkField(pkFields []*GeneratorField) (*GeneratorField, bool) {
+	if len(pkFields) != 1 {
+		return nil, false
+	}
+
+	field := pkFields[0]
+	fieldGoTypeLower := strings.ToLower(field.GoType)
+
+	if strings.HasPrefix(fieldGoTypeLower, "int") ||
+		strings.HasPrefix(fieldGoTypeLower, "uint") {
+		if !strings.EqualFold(fieldGoTypeLower, "uintptr") {
+			return field, true
+		}
+	}
+
+	return nil, false
+}
+
 func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *GeneratorSetup) {
 	g = &GeneratorSetup{}
 
@@ -226,6 +247,8 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 				insertableFields = append(insertableFields, field)
 			}
 		}
+
+		singleIntPkField, okSingleIntPkField := checkForSingleIntPkField(pkFields)
 
 		generatorUniqueGroups := [][]*GeneratorField{}
 		for _, uniqueIndexFieldGroup := range entitySetup.Uniques {
@@ -261,6 +284,9 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 			EditableFields:   editableFields,
 			InsertableFields: insertableFields,
 			TriggerFields:    triggerFields,
+
+			HasSingleIntPkField: okSingleIntPkField,
+			IntPkField:          singleIntPkField,
 
 			Uniques: generatorUniqueGroups,
 		})

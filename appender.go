@@ -113,12 +113,12 @@ func (a *Appender) AppendEntityIterators(entity *GeneratorEntity) *Appender {
 				paginator paginator.DBPaginator
 
 				tmpDestinationSlice []*db{{.Entity.VariableName}}
-				{{.Entity.VariableName}}s               []*{{.Entity.StructName}}
+				{{.Entity.VariableName}}s []*{{.Entity.StructName}}
 			}
 
 			type db{{.Entity.VariableName}} struct {
 				{{range .Entity.AllFields}}
-					{{- .GoStructDef}}
+					{{- .GoStructDef}} `+"`db:\"{{.SqlColumn}}\"`"+`
 				{{end}}
 			}
 
@@ -190,7 +190,6 @@ func (a *Appender) AppendRepoInterface(entity *GeneratorEntity) *Appender {
 
 func (a *Appender) appendRepoDBImplementation(entity *GeneratorEntity) *Appender {
 	//TODO: In the generated code in the `Where(` we use the ? symbol which is dialect specific
-
 	a.appendTemplate(
 		`
 			{{$outerScope := .}}
@@ -231,12 +230,20 @@ func (a *Appender) appendRepoDBImplementation(entity *GeneratorEntity) *Appender
 			}
 
 			func (r *{{.Entity.VariableName}}Repository) Add({{.Entity.VariableName}} *{{.Entity.StructName}}) error {
-				return sql_statement.NewInsertBuilder(r.dialect, r.db, r.tableName).
+				var lastInsertId int64
+				err := sql_statement.NewInsertBuilder(r.dialect, r.db, r.tableName).
 					{{range .Entity.InsertableFields -}}
 						Set("{{- .SqlColumn -}}", {{$outerScope.Entity.VariableName}}.{{- .FieldName}}).
 					{{end -}}
+					{{if .Entity.HasSingleIntPkField -}}
+						LastInsertIdDest(&lastInsertId).
+					{{end -}}
 					Build().
 					Execute()
+				if err == nil {
+					{{$outerScope.Entity.VariableName}}.{{.Entity.IntPkField.FieldName}} = {{.Entity.IntPkField.GoType}}(lastInsertId)
+				}
+				return err
 			}
 
 			func (r *{{.Entity.VariableName}}Repository) Delete({{.Entity.VariableName}} *{{.Entity.StructName}}) error {
