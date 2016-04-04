@@ -19,20 +19,24 @@ func printFlagUsageAndExit() {
 }
 
 type generatedSingleEntityFiles struct {
-	SchemaCreate []byte
-	Entity       []byte
-	Iterator     []byte
-	Repository   []byte
+	SchemaCreate            []byte
+	Entity                  []byte
+	EntityHelpers           []byte
+	Iterator                []byte
+	Repository              []byte
+	StatementBuilderFactory []byte
 }
 
 func generateSingleEntityFiles(entity *GeneratorEntity, packageName string) (generated *generatedSingleEntityFiles, err error) {
 	defer handleDeferAndSetError(&err)
 
 	generated = &generatedSingleEntityFiles{
-		SchemaCreate: NewAppender().AppendSchemaCreate(entity).Bytes(packageName),
-		Entity:       NewAppender().AppendEntityStructs(entity).Bytes(packageName),
-		Iterator:     NewAppender().AppendEntityIterators(entity).Bytes(packageName),
-		Repository:   NewAppender().AppendRepoInterface(entity).Bytes(packageName),
+		SchemaCreate:            NewAppender().AppendSchemaCreate(entity).Bytes(packageName),
+		Entity:                  NewAppender().AppendEntityStructs(entity).Bytes(packageName),
+		EntityHelpers:           NewAppender().AppendEntityHelpers(entity).Bytes(packageName),
+		Iterator:                NewAppender().AppendEntityIterators(entity).Bytes(packageName),
+		Repository:              NewAppender().AppendRepoInterface(entity).Bytes(packageName),
+		StatementBuilderFactory: NewAppender().AppendStatementBuilderFactory(entity).Bytes(packageName),
 	}
 	err = nil
 	return
@@ -84,8 +88,10 @@ func main() {
 		filesToWrite = append(filesToWrite,
 			&fileToWrite{FilePath: filepath.Join(*outDirFlag, entity.EntityName+"_schema_create.go"), Content: generated.SchemaCreate},
 			&fileToWrite{FilePath: filepath.Join(*outDirFlag, entity.EntityName+"_entity.go"), Content: generated.Entity},
+			&fileToWrite{FilePath: filepath.Join(*outDirFlag, entity.EntityName+"_helpers.go"), Content: generated.EntityHelpers},
 			&fileToWrite{FilePath: filepath.Join(*outDirFlag, entity.EntityName+"_iterator.go"), Content: generated.Iterator},
 			&fileToWrite{FilePath: filepath.Join(*outDirFlag, entity.EntityName+"_repository.go"), Content: generated.Repository},
+			&fileToWrite{FilePath: filepath.Join(*outDirFlag, entity.EntityName+"_stmt_bldr_factory.go"), Content: generated.StatementBuilderFactory},
 		)
 	}
 

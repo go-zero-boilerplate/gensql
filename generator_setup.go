@@ -16,11 +16,12 @@ type GeneratorSetup struct {
 }
 
 type GeneratorEntity struct {
-	Dialect      *GeneratorDialect
-	EntityName   string
-	StructName   string
-	VariableName string
-	SqlTable     string
+	Dialect                 *GeneratorDialect
+	EntityName              string
+	StructName              string
+	VariableName            string
+	VariableNameFirstLetter string
+	SqlTable                string
 
 	AllFields        []*GeneratorField
 	PkFields         []*GeneratorField
@@ -273,10 +274,11 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 		g.Entities = append(g.Entities, &GeneratorEntity{
 			Dialect: generatorDialect,
 
-			EntityName:   entityName,
-			StructName:   kace.Camel(entityName, true),
-			VariableName: kace.Camel(entityName, false),
-			SqlTable:     kace.Snake(entityName),
+			EntityName:              entityName,
+			StructName:              kace.Camel(entityName, true),
+			VariableName:            kace.Camel(entityName, false),
+			VariableNameFirstLetter: string(kace.Camel(entityName, false)[0]),
+			SqlTable:                kace.Snake(entityName),
 
 			AllFields:        allFields,
 			PkFields:         pkFields,

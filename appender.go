@@ -86,6 +86,42 @@ func (a *Appender) AppendEntityStructs(entity *GeneratorEntity) *Appender {
 	return a
 }
 
+func (a *Appender) AppendEntityHelpers(entity *GeneratorEntity) *Appender {
+	a.appendLines(`import (
+		"github.com/go-zero-boilerplate/databases/sql_statement"
+	)`)
+
+	a.appendTemplate(
+		`
+			{{$entity := .Entity}}
+			{{$entityChar := .Entity.VariableNameFirstLetter}}
+			{{$sqlPlaceholderIndex0 := .SqlPlaceholderIndex0}}
+
+			var {{.Entity.StructName}}Helpers = struct {
+				SqlColumnNames *{{.Entity.VariableName}}SqlColumnNames
+			}{
+				SqlColumnNames: &{{.Entity.VariableName}}SqlColumnNames{
+					{{range .Entity.AllFields}}
+						{{- .FieldName}}: "{{.SqlColumn}}",
+					{{end}}
+				},
+			}
+
+			type {{.Entity.VariableName}}SqlColumnNames struct {
+				{{range .Entity.AllFields}}
+					{{- .FieldName}} string
+				{{end}}
+			}
+			`,
+		map[string]interface{}{
+			"Entity":               entity,
+			"SqlPlaceholderIndex0": entity.Dialect.Dialect.Placeholder(0),
+		},
+	)
+
+	return a
+}
+
 func (a *Appender) AppendEntityIterators(entity *GeneratorEntity) *Appender {
 	a.appendLines(`import (
 		"github.com/go-zero-boilerplate/databases/sql_statement"
@@ -184,6 +220,59 @@ func (a *Appender) AppendRepoInterface(entity *GeneratorEntity) *Appender {
 	)
 
 	a.appendRepoDBImplementation(entity)
+
+	return a
+}
+
+func (a *Appender) AppendStatementBuilderFactory(entity *GeneratorEntity) *Appender {
+	a.appendLines(`import (
+		"github.com/go-zero-boilerplate/databases"
+		"github.com/go-zero-boilerplate/databases/sql_statement"
+	)`)
+
+	a.appendTemplate(
+		`
+			{{$entityChar := .Entity.VariableNameFirstLetter}}
+
+			func New{{.Entity.StructName}}StatementBuilderFactory() {{.Entity.StructName}}StatementBuilderFactory {
+			    return &{{.Entity.VariableName}}StatementBuilderFactory{
+			        dialect:   {{.Entity.Dialect.GoVariablePart}},
+			        tableName: "{{.Entity.SqlTable}}",
+			    }
+			}
+
+			type {{.Entity.StructName}}StatementBuilderFactory interface {
+			    Insert(db databases.Database) sql_statement.InsertBuilder
+			    Select(db databases.Database) sql_statement.SelectBuilder
+			    Update(db databases.Database) sql_statement.UpdateBuilder
+			    Delete(db databases.Database) sql_statement.DeleteBuilder
+			}
+
+			type {{.Entity.VariableName}}StatementBuilderFactory struct {
+			    dialect   databases.Dialect
+			    tableName string
+			}
+
+			func ({{$entityChar}} *{{.Entity.VariableName}}StatementBuilderFactory) Insert(db databases.Database) sql_statement.InsertBuilder {
+			    return sql_statement.NewInsertBuilderFactory(db).FromDialect({{$entityChar}}.dialect, {{$entityChar}}.tableName)
+			}
+
+			func ({{$entityChar}} *{{.Entity.VariableName}}StatementBuilderFactory) Select(db databases.Database) sql_statement.SelectBuilder {
+			    return sql_statement.NewSelectBuilderFactory(db).FromDialect({{$entityChar}}.dialect, {{$entityChar}}.tableName)
+			}
+
+			func ({{$entityChar}} *{{.Entity.VariableName}}StatementBuilderFactory) Update(db databases.Database) sql_statement.UpdateBuilder {
+			    return sql_statement.NewUpdateBuilderFactory(db).FromDialect({{$entityChar}}.dialect, {{$entityChar}}.tableName)
+			}
+
+			func ({{$entityChar}} *{{.Entity.VariableName}}StatementBuilderFactory) Delete(db databases.Database) sql_statement.DeleteBuilder {
+			    return sql_statement.NewDeleteBuilderFactory(db).FromDialect({{$entityChar}}.dialect, {{$entityChar}}.tableName)
+			}
+		`,
+		map[string]interface{}{
+			"Entity": entity,
+		},
+	)
 
 	return a
 }
@@ -317,7 +406,7 @@ func (a *Appender) Bytes(packageName string) []byte {
 
 	prettyCombined, err := format.Source([]byte(combinedLines))
 	if err != nil {
-		panic(fmt.Errorf("Cannot format, error: %s", err.Error()))
+		panic(fmt.Errorf("Cannot format, error: %s. Source was:\n%s", err.Error(), string(combinedLines)))
 	}
 
 	processedImports, err := imports.Process(packageName, prettyCombined, nil)
