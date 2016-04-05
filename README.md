@@ -6,7 +6,7 @@ SQL generator for golang (generating static go code instead of using reflection)
 - Entity - golang struct
 - Iterator (using the **paginator** of [databases](https://github.com/go-zero-boilerplate/databases)) to iterate through entities in the Database by using Offset and Limit in the background to "page" through your entries but in your code all you need is to call `Next()`
 - Repository - had some inspiration from Entity Framework of C#. But the repository has your common CRUD calls like `GetByPk` , `List` , `Add` , `Delete` , `Save`
-- Generates the SQL `CREATE` sql statements
+- Generates the SQL `CREATE` sql statements (including creating the table, unique indexes and update-field triggers)
 
 ## Usage example (quick start)
 

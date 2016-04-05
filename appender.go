@@ -59,13 +59,22 @@ func (a *Appender) AppendSchemaCreate(entity *GeneratorEntity) *Appender {
 	table := builder.Build()
 
 	schemaText := schema.GenerateSchema(entity.Dialect.Dialect, table)
-	a.appendLines(fmt.Sprintf(`const ( 
-			%s__CREATE_TABLE_SQL__%s = `+"`%s`"+`
-		)`,
-		strings.ToUpper(entity.Dialect.Name),
-		strings.ToUpper(entity.EntityName),
-		schemaText,
-	))
+	a.appendTemplate(
+		`
+			import (
+				"github.com/go-zero-boilerplate/databases"
+			)
+
+			func {{.Entity.Dialect.Name | CamelFirstUpper}}CreateSchema_{{.Entity.EntityName | CamelFirstUpper}}(db databases.Database) error {
+				_, err := db.Exec(`+"`{{.SchemaText}}`"+`)
+				return err
+			}
+			`,
+		map[string]interface{}{
+			"Entity":     entity,
+			"SchemaText": schemaText,
+		},
+	)
 	return a
 }
 
@@ -349,6 +358,9 @@ func (a *Appender) appendRepoDBImplementation(entity *GeneratorEntity) *Appender
 					{{range .Entity.InsertableFields -}}
 						Set("{{- .SqlColumn -}}", {{$outerScope.Entity.VariableName}}.{{- .FieldName}}).
 					{{end -}}
+					{{if .Entity.MustSetUpdated}}
+						Set("{{- .Entity.UpdatedField.SqlColumn -}}", time.Now().UTC()).
+					{{end}}
 					{{range .Entity.PkFields -}}
 						Where("{{- .VariableName -}} = ?", {{$outerScope.Entity.VariableName}}.{{.FieldName}}).
 					{{end -}}
@@ -397,7 +409,7 @@ func (a *Appender) AppendRepositoryFactories(generatorSetup *GeneratorSetup) *Ap
 	return a
 }
 
-func (a *Appender) Bytes(packageName string) []byte {
+func (a *Appender) AsGoFile(packageName string) []byte {
 	if a.lines == nil {
 		return []byte{}
 	}

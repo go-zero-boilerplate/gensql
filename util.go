@@ -72,6 +72,9 @@ func execTemplateToString(templateString string, data interface{}) (string, erro
 			return s.(IAsSqlColumn).AsSqlColumn()
 		},
 
+		"UpperCase": func(s string) string { return strings.ToUpper(s) },
+		"LowerCase": func(s string) string { return strings.ToUpper(s) },
+
 		"CamelFirstUpper": func(s string) string {
 			return kace.Camel(s, true)
 		},

@@ -15,7 +15,7 @@ type dialectSchemaCreateTableVisitor struct {
 }
 
 func (d *dialectSchemaCreateTableVisitor) VisitMysql(m *mysql) {
-	tabWriter := newTabWriter("\t", 2).AppendLine("")
+	tabWriter := newTabWriter("    ", 2).AppendLine("")
 	tabWriter.AppendLine("CREATE TABLE IF NOT EXISTS %s (", d.table.Name)
 
 	tabWriter.LevelUp()
@@ -53,11 +53,12 @@ func (d *dialectSchemaCreateTableVisitor) VisitMysql(m *mysql) {
 }
 
 func (d *dialectSchemaCreateTableVisitor) VisitSqlite(s *sqlite) {
-	tabWriter := newTabWriter("\t", 2).AppendLine("")
+	tabWriter := newTabWriter("    ", 2).AppendLine("")
 	tabWriter.AppendLine("CREATE TABLE IF NOT EXISTS %s (", d.table.Name)
 
 	tabWriter.LevelUp()
 
+	var updatedField *Field = nil
 	for i, f := range d.table.Fields {
 		conditionalAppender := &ConditionalStringSliceAppender{}
 		conditionalAppender.Append(f.Name)
@@ -69,8 +70,8 @@ func (d *dialectSchemaCreateTableVisitor) VisitSqlite(s *sqlite) {
 		if f.Type == CREATED {
 			conditionalAppender.Append(s.Token(DEFAULT) + " CURRENT_TIMESTAMP")
 		} else if f.Type == UPDATED {
-			//TODO: Implement logic for sqlite field to add trigger for ON UPDATE - currently will fail
-			conditionalAppender.Append(s.Token(DEFAULT) + " CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+			conditionalAppender.Append(s.Token(DEFAULT) + " CURRENT_TIMESTAMP")
+			updatedField = f
 		} else {
 			conditionalAppender.AppendWithCondition(f.Default != "", s.Token(DEFAULT)+" "+s.WrapDefaultValue(f.Default))
 		}
@@ -88,15 +89,31 @@ func (d *dialectSchemaCreateTableVisitor) VisitSqlite(s *sqlite) {
 
 	tabWriter.AppendLine(");")
 
+	if updatedField != nil {
+		//TODO: [SQLITE UPDATE TRIGGER] Sort out sqlite triggers, if using this trigger we get error:
+		// An error occurred while commiting the data: too many levels of trigger recursion
+
+		/*tabWriter.AppendLine(`
+		  CREATE TRIGGER update_`+updatedField.Name+`
+		  AFTER UPDATE ON `+d.table.Name+`
+		  FOR EACH ROW
+		  BEGIN
+		    UPDATE `+d.table.Name+`
+		      SET `+updatedField.Name+` = current_timestamp
+		      WHERE rowid = old.rowid;
+		  END;`)*/
+	}
+
 	d.result = tabWriter.CombineLines()
 }
 
 func (d *dialectSchemaCreateTableVisitor) VisitPostgres(p *postgres) {
-	tabWriter := newTabWriter("\t", 2).AppendLine("")
+	tabWriter := newTabWriter("    ", 2).AppendLine("")
 	tabWriter.AppendLine("CREATE TABLE IF NOT EXISTS %s (", d.table.Name)
 
 	tabWriter.LevelUp()
 
+	var updatedField *Field = nil
 	for i, f := range d.table.Fields {
 		conditionalAppender := &ConditionalStringSliceAppender{}
 		conditionalAppender.Append(f.Name)
@@ -108,8 +125,8 @@ func (d *dialectSchemaCreateTableVisitor) VisitPostgres(p *postgres) {
 		if f.Type == CREATED {
 			conditionalAppender.Append(p.Token(DEFAULT) + " CURRENT_TIMESTAMP")
 		} else if f.Type == UPDATED {
-			//TODO: Implement logic for postgres field to add trigger for ON UPDATE - currently will fail
-			conditionalAppender.Append(p.Token(DEFAULT) + " CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+			conditionalAppender.Append(p.Token(DEFAULT) + " CURRENT_TIMESTAMP")
+			updatedField = f
 		} else {
 			conditionalAppender.AppendWithCondition(f.Default != "", p.Token(DEFAULT)+" "+p.WrapDefaultValue(f.Default))
 		}
@@ -126,6 +143,22 @@ func (d *dialectSchemaCreateTableVisitor) VisitPostgres(p *postgres) {
 	tabWriter.LevelDown()
 
 	tabWriter.AppendLine(");")
+
+	if updatedField != nil {
+		//TODO: Perhaps make more sense to try and not have duplicate triggers if multiple tables want a trigger to update same field name?
+		tabWriter.AppendLine(`
+        CREATE OR REPLACE FUNCTION update_` + d.table.Name + `_` + updatedField.Name + `_column()
+            RETURNS TRIGGER AS '
+          BEGIN
+            NEW.` + updatedField.Name + ` = NOW();
+            RETURN NEW;
+          END;
+        ' LANGUAGE 'plpgsql';
+
+        CREATE TRIGGER update_` + updatedField.Name + ` BEFORE UPDATE
+          ON ` + d.table.Name + ` FOR EACH ROW EXECUTE PROCEDURE
+          update_` + d.table.Name + `_` + updatedField.Name + `_column();`)
+	}
 
 	d.result = tabWriter.CombineLines()
 }

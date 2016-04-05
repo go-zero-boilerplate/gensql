@@ -32,6 +32,8 @@ type GeneratorEntity struct {
 
 	HasSingleIntPkField bool
 	IntPkField          *GeneratorField
+	MustSetUpdated      bool
+	UpdatedField        *GeneratorField
 
 	Uniques [][]*GeneratorField
 }
@@ -229,6 +231,7 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 		insertableFields := []*GeneratorField{}
 		triggerFields := []*GeneratorField{}
 
+		var updatedField *GeneratorField = nil
 		for _, fieldString := range entitySetup.Fields {
 			field := generatorFieldFromString(fieldString)
 			allFields = append(allFields, field)
@@ -239,6 +242,9 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 				nonPkFields = append(nonPkFields, field)
 			}
 
+			if field.SchemaType == schema.UPDATED {
+				updatedField = field
+			}
 			if field.IsTriggerField {
 				triggerFields = append(triggerFields, field)
 			}
@@ -271,6 +277,11 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 			Dialect:        schema.ParseSchemaDialectFromString(entitySetup.Dialect),
 		}
 
+		//TODO: [SQLITE UPDATE TRIGGER] This relates to the todo in dialect_schema_create_table.go
+		//Could not get the sqlite trigger to work so using golang code to update - see usage of `MustSetUpdated` in the template code of appender.go
+		//Once we resolved the sqlite trigger we can set this mustSetUpdated variable to false
+		mustSetUpdated := generatorDialect.Dialect == schema.SqliteSchemaDialect && updatedField != nil
+
 		g.Entities = append(g.Entities, &GeneratorEntity{
 			Dialect: generatorDialect,
 
@@ -289,6 +300,8 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 
 			HasSingleIntPkField: okSingleIntPkField,
 			IntPkField:          singleIntPkField,
+			MustSetUpdated:      mustSetUpdated,
+			UpdatedField:        updatedField,
 
 			Uniques: generatorUniqueGroups,
 		})

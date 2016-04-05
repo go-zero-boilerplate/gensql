@@ -21,7 +21,7 @@ func (d *dialectSchemaCreateIndexVisitor) VisitMysql(m *mysql) {
 		obj = m.Token(UNIQUE_INDEX)
 	}
 
-	tabWriter := newTabWriter("\t", 2)
+	tabWriter := newTabWriter("    ", 2)
 	tabWriter.AppendLine("")
 	tabWriter.AppendLine("CREATE %s %s ON %s (", obj, d.index.Name, d.table.Name)
 
@@ -51,7 +51,7 @@ func (d *dialectSchemaCreateIndexVisitor) VisitSqlite(s *sqlite) {
 		obj = s.Token(UNIQUE_INDEX)
 	}
 
-	tabWriter := newTabWriter("\t", 2)
+	tabWriter := newTabWriter("    ", 2)
 	tabWriter.AppendLine("")
 	tabWriter.AppendLine("CREATE %s %s ON %s (", obj, d.index.Name, d.table.Name)
 
@@ -81,7 +81,7 @@ func (d *dialectSchemaCreateIndexVisitor) VisitPostgres(p *postgres) {
 		obj = p.Token(UNIQUE_INDEX)
 	}
 
-	tabWriter := newTabWriter("\t", 2)
+	tabWriter := newTabWriter("    ", 2)
 	tabWriter.AppendLine("")
 	tabWriter.AppendLine("CREATE %s %s ON %s (", obj, d.index.Name, d.table.Name)
 

@@ -31,12 +31,12 @@ func generateSingleEntityFiles(entity *GeneratorEntity, packageName string) (gen
 	defer handleDeferAndSetError(&err)
 
 	generated = &generatedSingleEntityFiles{
-		SchemaCreate:            NewAppender().AppendSchemaCreate(entity).Bytes(packageName),
-		Entity:                  NewAppender().AppendEntityStructs(entity).Bytes(packageName),
-		EntityHelpers:           NewAppender().AppendEntityHelpers(entity).Bytes(packageName),
-		Iterator:                NewAppender().AppendEntityIterators(entity).Bytes(packageName),
-		Repository:              NewAppender().AppendRepoInterface(entity).Bytes(packageName),
-		StatementBuilderFactory: NewAppender().AppendStatementBuilderFactory(entity).Bytes(packageName),
+		SchemaCreate:            NewAppender().AppendSchemaCreate(entity).AsGoFile(packageName),
+		Entity:                  NewAppender().AppendEntityStructs(entity).AsGoFile(packageName),
+		EntityHelpers:           NewAppender().AppendEntityHelpers(entity).AsGoFile(packageName),
+		Iterator:                NewAppender().AppendEntityIterators(entity).AsGoFile(packageName),
+		Repository:              NewAppender().AppendRepoInterface(entity).AsGoFile(packageName),
+		StatementBuilderFactory: NewAppender().AppendStatementBuilderFactory(entity).AsGoFile(packageName),
 	}
 	err = nil
 	return
@@ -50,7 +50,7 @@ func generateMultipleEntityFiles(generatorSetup *GeneratorSetup, packageName str
 	defer handleDeferAndSetError(&err)
 
 	generated = &generatedMultipleEntityFiles{
-		RepositoryFactory: NewAppender().AppendRepositoryFactories(generatorSetup).Bytes(packageName),
+		RepositoryFactory: NewAppender().AppendRepositoryFactories(generatorSetup).AsGoFile(packageName),
 	}
 	err = nil
 	return
