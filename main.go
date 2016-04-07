@@ -43,14 +43,16 @@ func generateSingleEntityFiles(entity *GeneratorEntity, packageName string) (gen
 }
 
 type generatedMultipleEntityFiles struct {
-	RepositoryFactory []byte
+	RepositoryFactory         []byte
+	StatementBuilderFactories []byte
 }
 
 func generateMultipleEntityFiles(generatorSetup *GeneratorSetup, packageName string) (generated *generatedMultipleEntityFiles, err error) {
 	defer handleDeferAndSetError(&err)
 
 	generated = &generatedMultipleEntityFiles{
-		RepositoryFactory: NewAppender().AppendRepositoryFactories(generatorSetup).AsGoFile(packageName),
+		RepositoryFactory:         NewAppender().AppendRepositoryFactories(generatorSetup).AsGoFile(packageName),
+		StatementBuilderFactories: NewAppender().AppendStatementBuilderFactories(generatorSetup).AsGoFile(packageName),
 	}
 	err = nil
 	return
@@ -101,6 +103,7 @@ func main() {
 	}
 	filesToWrite = append(filesToWrite,
 		&fileToWrite{FilePath: filepath.Join(*outDirFlag, "repository_factory.go"), Content: generatedMultiEntity.RepositoryFactory},
+		&fileToWrite{FilePath: filepath.Join(*outDirFlag, "statement_builder_factories.go"), Content: generatedMultiEntity.StatementBuilderFactories},
 	)
 
 	for _, f := range filesToWrite {
