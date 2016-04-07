@@ -2,10 +2,16 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+)
+
+var (
+	Version = "0.0.1"
+	GitHash = "NO GIT HASH"
 )
 
 var (
@@ -60,6 +66,7 @@ func generateMultipleEntityFiles(generatorSetup *GeneratorSetup, packageName str
 
 func main() {
 	flag.Parse()
+	fmt.Println(fmt.Sprintf("Running version '%s' and git hash '%s'", Version, GitHash))
 
 	if len(*inFileFlag) == 0 ||
 		len(*outDirFlag) == 0 {
