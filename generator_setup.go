@@ -28,6 +28,7 @@ type GeneratorEntity struct {
 	NonPkFields      []*GeneratorField
 	InsertableFields []*GeneratorField
 	EditableFields   []*GeneratorField
+	NullableFields   []*GeneratorField
 	TriggerFields    []*GeneratorField
 
 	HasSingleIntPkField bool
@@ -36,6 +37,8 @@ type GeneratorEntity struct {
 	UpdatedField        *GeneratorField
 
 	Uniques [][]*GeneratorField
+
+	AdditionalImports *additionalImportsAppender
 }
 
 type GeneratorField struct {
@@ -44,15 +47,19 @@ type GeneratorField struct {
 	IsTriggerField bool
 	IsNullable     bool
 
-	FieldName    string
-	VariableName string
-	GoType       string
-	GoStructDef  string
-	SqlColumn    string
-	SchemaType   schema.FieldType
-	SqlSize      int
-	DefaultValue string
-	ExtraArgs    []string
+	FieldName            string
+	VariableName         string
+	GoType               string
+	DbGoType             string
+	GoStructDef          string
+	GoStructDbDef        string
+	DbFieldNameDotSuffix string
+	MustCastDbField      bool
+	SqlColumn            string
+	SchemaType           schema.FieldType
+	SqlSize              int
+	DefaultValue         string
+	ExtraArgs            []string
 }
 
 type GeneratorDialect struct {
@@ -85,25 +92,26 @@ func schemaFieldTypeFromGoType(goType string, isCreatedField, isUpdatedField boo
 	return fieldType
 }
 
-func generatorFieldFromString(s string) *GeneratorField {
+func generatorFieldFromString(s string) (*GeneratorField, *additionalImportsAppender) {
 	splitted := splitStringRemoveEmpty(s, " ")
 	if len(splitted) == 0 {
 		panic("Cannot generate field from string '" + s + "'")
 	}
 
 	var (
-		fieldName      string = splitted[0]
-		fieldGoType    string
-		fieldArgs      []string
-		isTriggerField bool             = false
-		isCreatedField bool             = false
-		isUpdatedField bool             = false
-		isAuto         bool             = false
-		isPkField      bool             = false
-		isNullable     bool             = false
-		schemaType     schema.FieldType = schema.VARCHAR
-		sqlSize        int              = 0
-		defaultValue   string           = ""
+		fieldName              string = splitted[0]
+		fieldGoType            string
+		fieldArgs              []string
+		isTriggerField         bool                       = false
+		isCreatedField         bool                       = false
+		isUpdatedField         bool                       = false
+		isAuto                 bool                       = false
+		isPkField              bool                       = false
+		isNullable             bool                       = false
+		schemaType             schema.FieldType           = schema.VARCHAR
+		sqlSize                int                        = 0
+		defaultValue           string                     = ""
+		fieldAdditionalImports *additionalImportsAppender = &additionalImportsAppender{}
 	)
 
 	if len(splitted) == 1 {
@@ -159,23 +167,34 @@ func generatorFieldFromString(s string) *GeneratorField {
 		fieldGoType = "string"
 	}
 
+	goTypeImportPath := getImportPathForGoType(fieldGoType)
+	fieldAdditionalImports.AddEntityStructPath(goTypeImportPath)
+	fieldAdditionalImports.AddEntityIteratorPath(goTypeImportPath)
+
 	schemaType = schemaFieldTypeFromGoType(fieldGoType, isCreatedField, isUpdatedField)
 
+	importPackagePath, dbGoFieldType, dbDotSuffix, mustCastDbField := dbGoFieldTypeFromGoType(fieldGoType, isNullable)
+	fieldAdditionalImports.AddEntityIteratorPath(importPackagePath)
+
 	return &GeneratorField{
-		IsAuto:         isAuto,
-		IsPkField:      isPkField,
-		IsTriggerField: isTriggerField,
-		IsNullable:     isNullable,
-		FieldName:      kace.Camel(fieldName, true),
-		VariableName:   kace.Camel(fieldName, false),
-		GoType:         fieldGoType,
-		GoStructDef:    kace.Camel(fieldName, true) + " " + fieldGoType,
-		SqlColumn:      kace.Snake(fieldName),
-		SchemaType:     schemaType,
-		SqlSize:        sqlSize,
-		DefaultValue:   defaultValue,
-		ExtraArgs:      fieldArgs,
-	}
+		IsAuto:               isAuto,
+		IsPkField:            isPkField,
+		IsTriggerField:       isTriggerField,
+		IsNullable:           isNullable,
+		FieldName:            kace.Camel(fieldName, true),
+		VariableName:         kace.Camel(fieldName, false),
+		GoType:               fieldGoType,
+		DbGoType:             dbGoFieldType,
+		GoStructDef:          kace.Camel(fieldName, true) + " " + fieldGoType,
+		GoStructDbDef:        kace.Camel(fieldName, true) + " " + dbGoFieldType,
+		DbFieldNameDotSuffix: dbDotSuffix,
+		MustCastDbField:      mustCastDbField,
+		SqlColumn:            kace.Snake(fieldName),
+		SchemaType:           schemaType,
+		SqlSize:              sqlSize,
+		DefaultValue:         defaultValue,
+		ExtraArgs:            fieldArgs,
+	}, fieldAdditionalImports
 }
 
 func getSchemaGoVariablePart(dialectString string) string {
@@ -229,12 +248,15 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 		nonPkFields := []*GeneratorField{}
 		editableFields := []*GeneratorField{}
 		insertableFields := []*GeneratorField{}
+		nullableFields := []*GeneratorField{}
 		triggerFields := []*GeneratorField{}
+		entityAdditionalImports := &additionalImportsAppender{}
 
 		var updatedField *GeneratorField = nil
 		for _, fieldString := range entitySetup.Fields {
-			field := generatorFieldFromString(fieldString)
+			field, fieldAdditionalImports := generatorFieldFromString(fieldString)
 			allFields = append(allFields, field)
+			entityAdditionalImports.MergeIntoSelf(fieldAdditionalImports)
 
 			if field.IsPkField {
 				pkFields = append(pkFields, field)
@@ -252,6 +274,10 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 			if !field.IsPkField && !field.IsTriggerField {
 				editableFields = append(editableFields, field)
 				insertableFields = append(insertableFields, field)
+			}
+
+			if field.IsNullable {
+				nullableFields = append(nullableFields, field)
 			}
 		}
 
@@ -296,6 +322,7 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 			NonPkFields:      nonPkFields,
 			EditableFields:   editableFields,
 			InsertableFields: insertableFields,
+			NullableFields:   nullableFields,
 			TriggerFields:    triggerFields,
 
 			HasSingleIntPkField: okSingleIntPkField,
@@ -304,6 +331,8 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 			UpdatedField:        updatedField,
 
 			Uniques: generatorUniqueGroups,
+
+			AdditionalImports: entityAdditionalImports,
 		})
 	}
 

@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/go-zero-boilerplate/gensql/schema"
-
-	"golang.org/x/tools/imports"
 )
 
 func NewAppender() *Appender {
@@ -80,6 +78,16 @@ func (a *Appender) AppendSchemaCreate(entity *GeneratorEntity) *Appender {
 }
 
 func (a *Appender) AppendEntityStructs(entity *GeneratorEntity) *Appender {
+	imports := []string{}
+
+	for _, importPath := range entity.AdditionalImports.EntityStruct {
+		imports = append(imports, importPath)
+	}
+
+	a.appendLines(fmt.Sprintf(`import (
+		%s
+	)`, JoinImportsForGoFile(imports, "\n")))
+
 	a.appendTemplate(
 		`
 			type {{.Entity.StructName}} struct {
@@ -97,10 +105,6 @@ func (a *Appender) AppendEntityStructs(entity *GeneratorEntity) *Appender {
 }
 
 func (a *Appender) AppendEntityHelpers(entity *GeneratorEntity) *Appender {
-	a.appendLines(`import (
-		"github.com/go-zero-boilerplate/databases/sql_statement"
-	)`)
-
 	a.appendTemplate(
 		`
 			{{$entity := .Entity}}
@@ -133,10 +137,18 @@ func (a *Appender) AppendEntityHelpers(entity *GeneratorEntity) *Appender {
 }
 
 func (a *Appender) AppendEntityIterators(entity *GeneratorEntity) *Appender {
-	a.appendLines(`import (
-		"github.com/go-zero-boilerplate/databases/sql_statement"
-		"github.com/go-zero-boilerplate/databases/paginator"
-	)`)
+	imports := []string{
+		`github.com/go-zero-boilerplate/databases/sql_statement`,
+		`github.com/go-zero-boilerplate/databases/paginator`,
+	}
+
+	for _, importPath := range entity.AdditionalImports.EntityIterator {
+		imports = append(imports, importPath)
+	}
+
+	a.appendLines(fmt.Sprintf(`import (
+		%s
+	)`, JoinImportsForGoFile(imports, "\n")))
 
 	a.appendTemplate(
 		`
@@ -164,7 +176,7 @@ func (a *Appender) AppendEntityIterators(entity *GeneratorEntity) *Appender {
 
 			type db{{.Entity.VariableName}} struct {
 				{{range .Entity.AllFields}}
-					{{- .GoStructDef}} `+"`db:\"{{.SqlColumn}}\"`"+`
+					{{- .GoStructDbDef}} `+"`db:\"{{.SqlColumn}}\"`"+`
 				{{end}}
 			}
 
@@ -197,7 +209,9 @@ func (a *Appender) AppendEntityIterators(entity *GeneratorEntity) *Appender {
 				for _, t := range d.tmpDestinationSlice {
 					d.{{.Entity.VariableName}}s = append(d.{{.Entity.VariableName}}s, &{{.Entity.StructName}}{
 						{{range .Entity.AllFields}}
-							{{- .FieldName}}: t.{{- .FieldName}},
+							{{- if .MustCastDbField}} {{- .FieldName}}: {{- .GoType}}(t.{{- .FieldName}}{{- .DbFieldNameDotSuffix}}),
+							{{- else}} {{- .FieldName}}: t.{{- .FieldName}}{{- .DbFieldNameDotSuffix}},
+							{{- end}}
 						{{end}}
 					})
 				}
@@ -213,6 +227,19 @@ func (a *Appender) AppendEntityIterators(entity *GeneratorEntity) *Appender {
 }
 
 func (a *Appender) AppendRepoInterface(entity *GeneratorEntity) *Appender {
+	imports := []string{
+		"github.com/go-zero-boilerplate/databases",
+		"github.com/go-zero-boilerplate/databases/sql_statement",
+	}
+
+	if len(entity.NullableFields) > 0 {
+		imports = append(imports, "gopkg.in/guregu/null.v3")
+	}
+
+	a.appendLines(fmt.Sprintf(`import (
+		%s
+	)`, JoinImportsForGoFile(imports, "\n")))
+
 	a.appendTemplate(
 		`
 			type {{.Entity.StructName}}Repository interface {
@@ -306,6 +333,10 @@ func (a *Appender) appendRepoDBImplementation(entity *GeneratorEntity) *Appender
 					{{end -}}
 				}
 
+				{{range .Entity.NullableFields -}}
+				db{{- .FieldName}} := {{.DbGoType}}{}
+				{{end -}}
+
 				err := r.db.QueryRow("SELECT {{.Entity.NonPkFields | AsSqlSelectColumns}} FROM " + r.tableName + " WHERE {{.Entity.PkFields | AsSqlParameterizedWhereColumns}}",
 					{{range .Entity.PkFields -}}
 						{{- .VariableName -}},
@@ -313,12 +344,23 @@ func (a *Appender) appendRepoDBImplementation(entity *GeneratorEntity) *Appender
 				).
 					Scan(
 						{{range .Entity.NonPkFields -}}
-							&{{$outerScope.Entity.VariableName}}.{{- .FieldName -}},
+							{{- if .IsNullable}} &db{{- .FieldName}},
+							{{- else}} &{{$outerScope.Entity.VariableName}}.{{- .FieldName -}},
+							{{- end}}
 						{{end -}}
 					)
 				if err != nil {
 					return nil, err
 				}
+				
+				{{range .Entity.NullableFields -}}
+				if db{{- .FieldName}}.Valid {
+					{{- if .MustCastDbField}} {{$outerScope.Entity.VariableName}}.{{- .FieldName -}} = {{- .GoType}}(db{{- .FieldName}}{{- .DbFieldNameDotSuffix}})
+					{{- else}} {{$outerScope.Entity.VariableName}}.{{- .FieldName -}} = db{{- .FieldName}}{{- .DbFieldNameDotSuffix}}
+					{{- end}}
+				}
+				{{end -}}
+				
 				return {{.Entity.VariableName}}, err
 			}
 
@@ -378,6 +420,10 @@ func (a *Appender) appendRepoDBImplementation(entity *GeneratorEntity) *Appender
 }
 
 func (a *Appender) AppendRepositoryFactories(generatorSetup *GeneratorSetup) *Appender {
+	a.appendLines(`import (
+		"github.com/go-zero-boilerplate/databases"
+	)`)
+
 	a.appendTemplate(
 		`
 			func NewRepositoryFactory() RepositoryFactory {
@@ -458,10 +504,16 @@ func (a *Appender) AsGoFile(packageName string) []byte {
 		panic(fmt.Errorf("Cannot format, error: %s. Source was:\n%s", err.Error(), string(combinedLines)))
 	}
 
-	processedImports, err := imports.Process(packageName, prettyCombined, nil)
-	if err != nil {
-		panic(fmt.Errorf("Cannot format with imports, error: %s", err.Error()))
-	}
+	return prettyCombined
+	/*
+		TODO: Disabling this because imports are processed in the context of the environment executing it
+		For example we import package `gopkg.in/guregu/null.v3` for nullable fields. If that package is not
+		installed but rather `github.com/guregu/null` it will get swapped for that
 
-	return processedImports
+		processedImports, err := imports.Process(packageName, prettyCombined, nil)
+		if err != nil {
+			panic(fmt.Errorf("Cannot format with imports, error: %s", err.Error()))
+		}
+
+		return processedImports*/
 }
