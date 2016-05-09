@@ -11,6 +11,7 @@ type YamlSetup map[string]*YamlEntitySetup
 type YamlEntitySetup struct {
 	Dialect string
 	Fields  []string
+	Indexes [][]string
 	Uniques [][]string
 }
 

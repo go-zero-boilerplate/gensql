@@ -36,6 +36,7 @@ type GeneratorEntity struct {
 	MustSetUpdated      bool
 	UpdatedField        *GeneratorField
 
+	Indexes [][]*GeneratorField
 	Uniques [][]*GeneratorField
 
 	AdditionalImports *additionalImportsAppender
@@ -283,6 +284,19 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 
 		singleIntPkField, okSingleIntPkField := checkForSingleIntPkField(pkFields)
 
+		generatorIndexGroups := [][]*GeneratorField{}
+		for _, indexFieldGroup := range entitySetup.Indexes {
+			tmpIndexGroup := []*GeneratorField{}
+			for _, fieldName := range indexFieldGroup {
+				foundField := findGeneratorFieldByName(allFields, fieldName)
+				if foundField == nil {
+					panic(fmt.Sprintf("Unknown field '%s' specified as a unique field", fieldName))
+				}
+				tmpIndexGroup = append(tmpIndexGroup, foundField)
+			}
+			generatorIndexGroups = append(generatorIndexGroups, tmpIndexGroup)
+		}
+
 		generatorUniqueGroups := [][]*GeneratorField{}
 		for _, uniqueIndexFieldGroup := range entitySetup.Uniques {
 			tmpUniqueGroup := []*GeneratorField{}
@@ -330,6 +344,7 @@ func GeneratorSetupFromYamlSetup(orderedEntityNames []string, y *YamlSetup) (g *
 			MustSetUpdated:      mustSetUpdated,
 			UpdatedField:        updatedField,
 
+			Indexes: generatorIndexGroups,
 			Uniques: generatorUniqueGroups,
 
 			AdditionalImports: entityAdditionalImports,

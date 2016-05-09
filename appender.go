@@ -43,6 +43,18 @@ func (a *Appender) AppendSchemaCreate(entity *GeneratorEntity) *Appender {
 	}
 	builder = builder.Primary(primaryNames...)
 
+	for indexGroupNum, indexGroup := range entity.Indexes {
+		fieldNames := []string{}
+		for _, ig := range indexGroup {
+			fieldNames = append(fieldNames, ig.SqlColumn)
+		}
+		nameOfIndex, err := entity.Dialect.Dialect.IndexNameFromFieldNames(fieldNames...)
+		if err != nil {
+			nameOfIndex = fmt.Sprintf("entity_index_%d", indexGroupNum)
+		}
+		builder = builder.Index(nameOfIndex, false, fieldNames...)
+	}
+
 	for indexGroupNum, uniqueGroup := range entity.Uniques {
 		fieldNames := []string{}
 		for _, uf := range uniqueGroup {
