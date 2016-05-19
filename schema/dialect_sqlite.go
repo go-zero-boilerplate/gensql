@@ -65,6 +65,7 @@ type sqliteFieldTypeVisitor struct {
 }
 
 func (s *sqliteFieldTypeVisitor) VisitInteger(*IntegerFieldType)     { s.typKeyword = "INTEGER" }
+func (s *sqliteFieldTypeVisitor) VisitBigInt(*BigIntFieldType)       { s.typKeyword = "BIGINT" }
 func (s *sqliteFieldTypeVisitor) VisitVarchar(*VarcharFieldType)     { s.typKeyword = "TEXT" }
 func (s *sqliteFieldTypeVisitor) VisitBoolean(*BooleanFieldType)     { s.typKeyword = "INTEGER" }
 func (s *sqliteFieldTypeVisitor) VisitReal(*RealFieldType)           { s.typKeyword = "REAL" }

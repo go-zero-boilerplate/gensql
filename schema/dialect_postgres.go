@@ -71,6 +71,7 @@ type postgresFieldTypeVisitor struct {
 }
 
 func (p *postgresFieldTypeVisitor) VisitInteger(*IntegerFieldType) { p.typKeyword = "INTEGER" }
+func (p *postgresFieldTypeVisitor) VisitBigInt(*BigIntFieldType)   { p.typKeyword = "BIGINT" }
 func (p *postgresFieldTypeVisitor) VisitVarchar(*VarcharFieldType) {
 	if p.fieldSize > 0 {
 		p.typKeyword = fmt.Sprintf("VARCHAR(%d)", p.fieldSize)

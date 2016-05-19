@@ -2,6 +2,7 @@ package schema
 
 var (
 	INTEGER   = &IntegerFieldType{}
+	BIGINT    = &BigIntFieldType{}
 	VARCHAR   = &VarcharFieldType{}
 	BOOLEAN   = &BooleanFieldType{}
 	REAL      = &RealFieldType{}
@@ -18,6 +19,7 @@ type FieldType interface {
 
 type FieldTypeVisitor interface {
 	VisitInteger(*IntegerFieldType)
+	VisitBigInt(*BigIntFieldType)
 	VisitVarchar(*VarcharFieldType)
 	VisitBoolean(*BooleanFieldType)
 	VisitReal(*RealFieldType)
@@ -29,6 +31,7 @@ type FieldTypeVisitor interface {
 }
 
 type IntegerFieldType struct{}
+type BigIntFieldType struct{}
 type VarcharFieldType struct{}
 type BooleanFieldType struct{}
 type RealFieldType struct{}
@@ -39,6 +42,7 @@ type CreatedFieldType struct{}
 type UpdatedFieldType struct{}
 
 func (i *IntegerFieldType) Accept(visitor FieldTypeVisitor)   { visitor.VisitInteger(i) }
+func (b *BigIntFieldType) Accept(visitor FieldTypeVisitor)    { visitor.VisitBigInt(b) }
 func (v *VarcharFieldType) Accept(visitor FieldTypeVisitor)   { visitor.VisitVarchar(v) }
 func (b *BooleanFieldType) Accept(visitor FieldTypeVisitor)   { visitor.VisitBoolean(b) }
 func (r *RealFieldType) Accept(visitor FieldTypeVisitor)      { visitor.VisitReal(r) }

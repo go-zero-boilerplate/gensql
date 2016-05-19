@@ -64,6 +64,7 @@ type mysqlFieldTypeVisitor struct {
 }
 
 func (m *mysqlFieldTypeVisitor) VisitInteger(*IntegerFieldType) { m.typKeyword = "INTEGER" }
+func (m *mysqlFieldTypeVisitor) VisitBigInt(*BigIntFieldType)   { m.typKeyword = "BIGINT" }
 func (m *mysqlFieldTypeVisitor) VisitVarchar(*VarcharFieldType) {
 	if m.fieldSize > 0 {
 		m.typKeyword = fmt.Sprintf("VARCHAR(%d)", m.fieldSize)
