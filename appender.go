@@ -244,7 +244,7 @@ func (a *Appender) AppendRepoInterface(entity *GeneratorEntity) *Appender {
 	}
 
 	if len(entity.NullableFields) > 0 {
-		imports = append(imports, "gopkg.in/guregu/null.v3")
+		imports = append(imports, "gopkg.in/guregu/null.v3/zero")
 	}
 
 	a.appendLines(fmt.Sprintf(`import (
@@ -519,7 +519,7 @@ func (a *Appender) AsGoFile(packageName string) []byte {
 	return prettyCombined
 	/*
 		TODO: Disabling this because imports are processed in the context of the environment executing it
-		For example we import package `gopkg.in/guregu/null.v3` for nullable fields. If that package is not
+		For example we import package `gopkg.in/guregu/null.v3/zero` for nullable fields. If that package is not
 		installed but rather `github.com/guregu/null` it will get swapped for that
 
 		processedImports, err := imports.Process(packageName, prettyCombined, nil)
