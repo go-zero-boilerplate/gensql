@@ -218,10 +218,22 @@ func (a *Appender) AppendEntityIterators(entity *GeneratorEntity) *Appender {
 
 			func (d *db{{.Entity.VariableName}}Iterator) AfterSliceLoaded() {
 				for _, t := range d.tmpDestinationSlice {
+					{{range .Entity.AllFields -}}
+						{{- if .IsNullable}}
+							{{if .MustCastDbField}} {{.VariableName}} := {{.GoType}}(t.{{- .FieldName}}.Ptr())
+							{{- else}} {{.VariableName}} := t.{{- .FieldName}}.Ptr()
+							{{- end}}
+						{{- end}}
+					{{end -}}
+
 					d.{{.Entity.VariableName}}s = append(d.{{.Entity.VariableName}}s, &{{.Entity.StructName}}{
 						{{range .Entity.AllFields}}
-							{{- if .MustCastDbField}} {{- .FieldName}}: {{- .GoType}}(t.{{- .FieldName}}{{- .DbFieldNameDotSuffix}}),
-							{{- else}} {{- .FieldName}}: t.{{- .FieldName}}{{- .DbFieldNameDotSuffix}},
+							{{- if .IsNullable}}
+								{{- .FieldName}}: {{- .VariableName}},
+							{{- else}}
+								{{- if .MustCastDbField}} {{- .FieldName}}: {{- .GoType}}(t.{{- .FieldName}}{{- .DbFieldNameDotSuffix}}),
+								{{- else}} {{- .FieldName}}: t.{{- .FieldName}}{{- .DbFieldNameDotSuffix}},
+								{{- end}}
 							{{- end}}
 						{{end}}
 					})
@@ -365,11 +377,9 @@ func (a *Appender) appendRepoDBImplementation(entity *GeneratorEntity) *Appender
 				}
 				
 				{{range .Entity.NullableFields -}}
-				if db{{- .FieldName}}.Valid {
-					{{- if .MustCastDbField}} {{$outerScope.Entity.VariableName}}.{{- .FieldName -}} = {{- .GoType}}(db{{- .FieldName}}{{- .DbFieldNameDotSuffix}})
-					{{- else}} {{$outerScope.Entity.VariableName}}.{{- .FieldName -}} = db{{- .FieldName}}{{- .DbFieldNameDotSuffix}}
+					{{- if .MustCastDbField}} {{$outerScope.Entity.VariableName}}.{{- .FieldName -}} = {{- .GoType}}(db{{- .FieldName}}.Ptr())
+					{{- else}} {{$outerScope.Entity.VariableName}}.{{- .FieldName -}} = db{{- .FieldName}}.Ptr()
 					{{- end}}
-				}
 				{{end -}}
 				
 				return {{.Entity.VariableName}}, err

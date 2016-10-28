@@ -177,6 +177,13 @@ func generatorFieldFromString(s string) (*GeneratorField, *additionalImportsAppe
 	importPackagePath, dbGoFieldType, dbDotSuffix, mustCastDbField := dbGoFieldTypeFromGoType(fieldGoType, isNullable)
 	fieldAdditionalImports.AddEntityIteratorPath(importPackagePath)
 
+	var goStructDef string
+	if isNullable {
+		goStructDef = kace.Camel(fieldName, true) + " *" + fieldGoType
+	} else {
+		goStructDef = kace.Camel(fieldName, true) + " " + fieldGoType
+	}
+
 	return &GeneratorField{
 		IsAuto:               isAuto,
 		IsPkField:            isPkField,
@@ -186,7 +193,7 @@ func generatorFieldFromString(s string) (*GeneratorField, *additionalImportsAppe
 		VariableName:         kace.Camel(fieldName, false),
 		GoType:               fieldGoType,
 		DbGoType:             dbGoFieldType,
-		GoStructDef:          kace.Camel(fieldName, true) + " " + fieldGoType,
+		GoStructDef:          goStructDef,
 		GoStructDbDef:        kace.Camel(fieldName, true) + " " + dbGoFieldType,
 		DbFieldNameDotSuffix: dbDotSuffix,
 		MustCastDbField:      mustCastDbField,
